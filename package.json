@@ -25,9 +25,9 @@
     "@types/jsdom": "^21.1.7",
     "@types/lodash": "^4.17.1",
     "@types/node": "^18.19.68",
-    "@typescript-eslint/eslint-plugin": "^5.10.1",
-    "@typescript-eslint/parser": "^5.10.1",
-    "esbuild": "^0.21.1",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "esbuild": "^0.28.0",
     "eslint": "^9.17.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.2"

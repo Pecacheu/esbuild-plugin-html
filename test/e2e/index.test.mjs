@@ -278,7 +278,7 @@ describe('esbuild-plugin-html', () => {
                 await helper({}, {
                     metafile: false
                 });
-            }, /metafile is explictly disabled/)
+            }, /metafile is explicitly disabled/)
         });
         it('throws with outdir: undefined', async () => {
             await assert.rejects(async () => {
