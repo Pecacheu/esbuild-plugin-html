@@ -13,7 +13,7 @@ export interface HtmlFileConfiguration {
     /** @param filename The name of the output HTML file (relative to the output directory) */
     filename: string,
     /** @param entryPoints The entry points to include in the HTML file. */
-    entryPoints: string[],
+    entryPoints?: string[],
     /** @param title The title of the HTML file. */
     title?: string,
     /** @param htmlTemplate A path to a custom HTML template to use. If not set, a default template will be used. */
@@ -81,21 +81,22 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
     let logInfo = false
 
-    function collectEntrypoints(htmlFileConfiguration: HtmlFileConfiguration, metafile?: esbuild.Metafile) {
+    function collectEntrypoints(build: esbuild.PluginBuild, htmlFileConfiguration: HtmlFileConfiguration, metafile?: esbuild.Metafile) {
         if (!metafile) {
             throw new Error('metafile is missing!')
         }
+        const initEntryPts = htmlFileConfiguration.entryPoints ?? build.initialOptions.entryPoints as string[]
         const entryPoints = Object.entries(metafile?.outputs || {}).filter(([, value]) => {
             if (!value.entryPoint) {
                 return false
             }
-            return htmlFileConfiguration.entryPoints.includes(value.entryPoint)
+            return initEntryPts.includes(value.entryPoint)
         }).map(outputData => {
             // Flatten the output, instead of returning an array, let's return an object that contains the path of the output file as path
             return { path: outputData[0], ...outputData[1] }
         })
-        if (entryPoints.length < htmlFileConfiguration.entryPoints.length) {
-            for (const htmlFileEntry of htmlFileConfiguration.entryPoints) {
+        if (entryPoints.length < initEntryPts.length) {
+            for (const htmlFileEntry of initEntryPts) {
                 if (!entryPoints.some(ep => ep.entryPoint === htmlFileEntry)) {
                     console.log('⚠️ for "%s", entrypoint "%s" was requested, but not found.', htmlFileConfiguration.filename, htmlFileEntry)
                 }
@@ -298,7 +299,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
                 for (const htmlFileConfiguration of configuration.files) {
                     // First, search for outputs with the configured entryPoints
-                    const collectedEntrypoints = collectEntrypoints(htmlFileConfiguration, result.metafile)
+                    const collectedEntrypoints = collectEntrypoints(build, htmlFileConfiguration, result.metafile)
 
                     // All output files relevant for this html file
                     let collectedOutputFiles: (esbuild.Metafile['outputs'][string] & { path: string })[] = []
