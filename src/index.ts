@@ -364,12 +364,15 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
                     if (htmlFileConfiguration.favicon) {
                         // Injects a favicon if present
-                        if (!fs.existsSync(htmlFileConfiguration.favicon)) {
-                            throw new Error('favicon specified but does not exist')
-                        }
                         const fileExt = path.extname(htmlFileConfiguration.favicon)
                         const faviconName = 'favicon' + fileExt
-                        await fs.promises.copyFile(htmlFileConfiguration.favicon, `${outdir}/${faviconName}`)
+                        try {
+                            await fs.promises.copyFile(htmlFileConfiguration.favicon, `${outdir}/${faviconName}`)
+                        } catch(e) {
+                            if ((e as {code: string}).code === 'ENOENT')
+                                throw new Error('favicon specified but does not exist')
+                            throw e
+                        }
 
                         const linkTag = document.createElement('link')
                         linkTag.setAttribute('rel', 'icon')
