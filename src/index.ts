@@ -278,12 +278,12 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 linkTag.setAttribute('rel', 'stylesheet')
                 linkTag.setAttribute('href', targetPath)
                 document.head.appendChild(linkTag)
-                if(htmlFileConfiguration.appendHead) document.head.innerHTML += htmlFileConfiguration.appendHead
-                if(htmlFileConfiguration.prependBody) document.body.innerHTML = htmlFileConfiguration.prependBody + document.body.innerHTML
             } else {
                 if (logInfo) { console.log(`Warning: found file ${targetPath}, but it was neither .js nor .css`) }
             }
         }
+        if(htmlFileConfiguration.appendHead) document.head.innerHTML += htmlFileConfiguration.appendHead
+        if(htmlFileConfiguration.prependBody) document.body.innerHTML = htmlFileConfiguration.prependBody + document.body.innerHTML
     }
 
     return {
