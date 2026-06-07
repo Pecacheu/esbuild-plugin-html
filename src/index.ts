@@ -18,6 +18,8 @@ export interface HtmlFileConfiguration {
     title?: string,
     /** @param htmlTemplate A path to a custom HTML template to use. If not set, a default template will be used. */
     htmlTemplate?: string,
+    /** @param htmlFile Read a template from an HTML file on disk. */
+    htmlFile?: string,
     /** @param define A map of variables that will be available in the HTML file. */
     define?: Record<string, string>,
     /** @param scriptLoading How to load the generated script tags: blocking, defer, or module. Defaults to defer. */
@@ -151,12 +153,10 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
         }
     }
 
-    async function renderTemplate({ htmlTemplate, define }: HtmlFileConfiguration) {
-        const customHtmlTemplate = (htmlTemplate && fs.existsSync(htmlTemplate)
-            ? await fs.promises.readFile(htmlTemplate)
-            : htmlTemplate || '').toString()
-
-        const template = customHtmlTemplate || defaultHtmlTemplate
+    async function renderTemplate({ htmlTemplate, htmlFile, define }: HtmlFileConfiguration) {
+        const template = htmlFile
+            ? await fs.promises.readFile(htmlFile, {encoding: 'utf8'})
+            : htmlTemplate || defaultHtmlTemplate
 
         const compiledTemplateFn = lodashTemplate(template, { interpolate: /<%=([\s\S]+?)%>/g })
         return compiledTemplateFn({ define })
@@ -289,8 +289,22 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 throw new Error('outdir must be set')
             }
 
+            //Add HTML files to watch list
+            let watched = false
+            build.onLoad({filter: /./}, () => {
+                if(!watched) {
+                    watched = true
+                    const watchFiles = []
+                    for(const f of configuration.files) if(f.htmlFile)
+                        watchFiles.push(path.resolve(f.htmlFile))
+                    return {watchFiles}
+                }
+            })
+
             build.onEnd(async result => {
                 const startTime = Date.now()
+                watched = false
+
                 if (build.initialOptions.logLevel == 'debug' || build.initialOptions.logLevel == 'info') {
                     logInfo = true
                 }
