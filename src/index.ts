@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import esbuild from 'esbuild'
-import fs from 'fs'
+import fs from 'fs/promises'
 import path from 'path'
 import { JSDOM } from 'jsdom'
 import lodashTemplate from 'lodash/template'
@@ -161,7 +161,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
     async function renderTemplate({ htmlTemplate, htmlFile, define }: HtmlFileConfiguration) {
         const template = htmlFile
-            ? await fs.promises.readFile(htmlFile, {encoding: 'utf8'})
+            ? await fs.readFile(htmlFile, {encoding: 'utf8'})
             : htmlTemplate || defaultHtmlTemplate
 
         const compiledTemplateFn = lodashTemplate(template, { interpolate: /<%=([\s\S]+?)%>/g })
@@ -238,7 +238,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 if (isInline()) {
                     if (logInfo) { console.log('Inlining script', filepath) }
                     // Read the content of the JavaScript file, then append to the script tag
-                    const scriptContent = await fs.promises.readFile(
+                    const scriptContent = await fs.readFile(
                         filepath,
                         'utf-8'
                     )
@@ -263,7 +263,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 // Check if the CSS should be inlined -> if so, use style tags instead of link tags.
                 if (isInline()) {
                     const styleTag = document.createElement('style')
-                    const styleContent = await fs.promises.readFile(
+                    const styleContent = await fs.readFile(
                         filepath,
                         'utf-8'
                     )
@@ -367,7 +367,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                         const fileExt = path.extname(htmlFileConfiguration.favicon)
                         const faviconName = 'favicon' + fileExt
                         try {
-                            await fs.promises.copyFile(htmlFileConfiguration.favicon, `${outdir}/${faviconName}`)
+                            await fs.copyFile(htmlFileConfiguration.favicon, `${outdir}/${faviconName}`)
                         } catch(e) {
                             if ((e as {code: string}).code === 'ENOENT')
                                 throw new Error('favicon specified but does not exist')
@@ -388,11 +388,11 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                     await injectFiles(dom, collectedOutputFiles, outdir, publicPath, htmlFileConfiguration)
 
                     const out = posixJoin(outdir, htmlFileConfiguration.filename)
-                    await fs.promises.mkdir(path.dirname(out), {
+                    await fs.mkdir(path.dirname(out), {
                         recursive: true,
                     })
-                    await fs.promises.writeFile(out, dom.serialize())
-                    const stat = await fs.promises.stat(out)
+                    await fs.writeFile(out, dom.serialize())
+                    const stat = await fs.stat(out)
                     if (logInfo) { console.log(`  ${out} - ${stat.size}`) }
                 }
                 if (logInfo) { console.log(`  HTML Plugin Done in ${Date.now() - startTime}ms`) }
