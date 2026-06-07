@@ -42,6 +42,12 @@ export interface HtmlFileConfiguration {
         src: string,
         attrs?: { [key: string]: string }
     })[],
+    /** @param appendHead Extra tags to append to HTML head. */
+    appendHead?: string,
+    /** @param prependBody Extra tags to prepend to HTML body. */
+    prependBody?: string,
+    /** @param appendBody Extra tags to append to HTML body. */
+    appendBody?: string,
     hash?: boolean | string,
 }
 
@@ -180,6 +186,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
     async function injectFiles(dom: JSDOM, assets: { path: string }[], outDir: string, publicPath: string | undefined, htmlFileConfiguration: HtmlFileConfiguration) {
         const document = dom.window.document
+        if(htmlFileConfiguration.appendBody) document.body.innerHTML += htmlFileConfiguration.appendBody
         for (const script of htmlFileConfiguration?.extraScripts || []) {
             const scriptTag = document.createElement('script')
             if (typeof script === 'string') {
@@ -271,6 +278,8 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 linkTag.setAttribute('rel', 'stylesheet')
                 linkTag.setAttribute('href', targetPath)
                 document.head.appendChild(linkTag)
+                if(htmlFileConfiguration.appendHead) document.head.innerHTML += htmlFileConfiguration.appendHead
+                if(htmlFileConfiguration.prependBody) document.body.innerHTML = htmlFileConfiguration.prependBody + document.body.innerHTML
             } else {
                 if (logInfo) { console.log(`Warning: found file ${targetPath}, but it was neither .js nor .css`) }
             }
