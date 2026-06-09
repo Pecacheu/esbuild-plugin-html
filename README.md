@@ -1,12 +1,12 @@
-# @craftamap/esbuild-plugin-html
-[![npm](https://img.shields.io/npm/v/@craftamap/esbuild-plugin-html?color=green&style=flat-square)](https://www.npmjs.com/package/@craftamap/esbuild-plugin-html)
+# @pecacheu/esbuild-plugin-html
+[![npm](https://img.shields.io/npm/v/@pecacheu/esbuild-plugin-html?color=green&style=flat-square)](https://www.npmjs.com/package/@pecacheu/esbuild-plugin-html)
 
 ![Simple banner containing the name of the project in a html self-closing tag](.github/banner.png)
 
-`@craftamap/esbuild-plugin-html` is a plugin to generate HTML files with
+`@pecacheu/esbuild-plugin-html` is a plugin to generate HTML files with
 [esbuild](https://esbuild.github.io/).  All specified entry points, and their
 related files (such as `.css`-files) are automatically injected into the HTML
-file.  `@craftamap/esbuild-plugin-html` is inspired by
+file.  `@pecacheu/esbuild-plugin-html` is inspired by
 [jantimon/html-webpack-plugin](https://github.com/jantimon/html-webpack-plugin).
 
 Is any feature missing? 
@@ -23,9 +23,9 @@ does work with Deno.
 ## Installation
 
 ```bash
-yarn add -D @craftamap/esbuild-plugin-html
+yarn add -D @pecacheu/esbuild-plugin-html
 # or
-npm install --save-dev @craftamap/esbuild-plugin-html
+npm install --save-dev @pecacheu/esbuild-plugin-html
 ```
 
 ## Usage
@@ -42,7 +42,7 @@ this model, all discovered resources are injected. The plugin also uses [lodash
 templates](https://lodash.com/docs/4.17.15#template) to insert custom user
 data into the template.
 
-`@craftamap/esbuild-plugin-html` requires to have some options set in your
+`@pecacheu/esbuild-plugin-html` requires to have some options set in your
 esbuild script:
 
 - `outdir` must be set. The html files are generated within the `outdir`.
@@ -58,7 +58,7 @@ can, it may or may not work reliable. If you encounter any issues with it,
 
 ```javascript
 const esbuild = require('esbuild');
-const { htmlPlugin } = require('@craftamap/esbuild-plugin-html');
+const { htmlPlugin } = require('@pecacheu/esbuild-plugin-html');
 
 const options = {
     entryPoints: ['src/index.jsx'],
@@ -203,7 +203,7 @@ Commits should be messaged according to [Conventional Commits](https://www.conve
 ## Kudos: Other `*.html`-Plugins
 
 There exist some other `*.html`-plugins for esbuild. Those work differently
-than `@craftamap/esbuild-plugin-html`, and might be a better fit for you:
+than `@pecacheu/esbuild-plugin-html`, and might be a better fit for you:
 
 - [@esbuilder/html](https://www.npmjs.com/package/@esbuilder/html) -
   loader-based approach (use `*.html`-file as entry point, and start
