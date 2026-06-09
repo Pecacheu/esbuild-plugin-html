@@ -51,6 +51,11 @@ export interface HtmlFileConfiguration {
     hash?: boolean | string,
 }
 
+type AssetList = {[k: string]: {
+    dest: string
+    htmlFile: string
+}}
+
 const defaultHtmlTemplate = `
 <!DOCTYPE html>
 <html>
@@ -184,7 +189,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
         return `${publicPath}${slash}${relPath}`
     }
 
-    async function injectFiles(dom: JSDOM, assets: { path: string }[], outDir: string, publicPath: string | undefined, htmlFileConfiguration: HtmlFileConfiguration) {
+    async function injectFiles(dom: JSDOM, assets: { path: string }[], outDir: string, publicPath: string | undefined, htmlFileConfiguration: HtmlFileConfiguration, foundAssets: AssetList) {
         const document = dom.window.document
         if(htmlFileConfiguration.appendBody) document.body.innerHTML += htmlFileConfiguration.appendBody
         for (const script of htmlFileConfiguration?.extraScripts || []) {
@@ -275,6 +280,8 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 }
 
                 const linkTag = document.createElement('link')
+                //@ts-expect-error Temp prop
+                linkTag._int = true
                 linkTag.setAttribute('rel', 'stylesheet')
                 linkTag.setAttribute('href', targetPath)
                 document.head.appendChild(linkTag)
@@ -284,6 +291,32 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
         }
         if(htmlFileConfiguration.appendHead) document.head.innerHTML += htmlFileConfiguration.appendHead
         if(htmlFileConfiguration.prependBody) document.body.innerHTML = htmlFileConfiguration.prependBody + document.body.innerHTML
+
+        const htmlAtRoot = posixJoin(htmlFileConfiguration.filename).indexOf(path.sep) === -1
+
+        //Find & replace all source links
+        for(const el of document.querySelectorAll('img,object,link')) {
+            //@ts-expect-error Skip internal
+            if(el._int) continue
+
+            let srcProp = 'src'
+            switch(el.tagName) {
+            case 'OBJECT': srcProp = 'data'; break
+            case 'LINK': srcProp = 'href'
+            }
+            let src = el.getAttribute(srcProp)
+            if(!src || src.indexOf('://') !== -1) continue //Absolute URI
+            if(src.startsWith('/')) src = src.slice(1) //Relative to working dir
+            else src = path.join(htmlFileConfiguration.htmlFile ? //Relative to file dir
+                path.dirname(htmlFileConfiguration.htmlFile) : '', src)
+
+            let name = path.basename(src)
+            const dest = posixJoin(path.dirname(path.join(outDir, htmlFileConfiguration.filename)), name)
+            if(!htmlAtRoot) name = publicPath ? joinWithPublicPath(publicPath, name) : '/' + name
+            src = path.resolve(src)
+            el.setAttribute(srcProp, name)
+            foundAssets[src] = {dest, htmlFile: htmlFileConfiguration.filename}
+        }
     }
 
     return {
@@ -319,6 +352,10 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 }
                 if (logInfo) { console.log() }
 
+                // Note: we can safely disable this rule here, as we already asserted this in setup.onStart
+                const outdir = build.initialOptions.outdir!
+                const publicPath = build.initialOptions.publicPath
+                const foundAssets: AssetList = {}
 
                 for (const htmlFileConfiguration of configuration.files) {
                     // First, search for outputs with the configured entryPoints
@@ -346,10 +383,6 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
                         collectedOutputFiles = [...collectedOutputFiles, ...relatedOutputFiles.values()]
                     }
-                    // Note: we can safely disable this rule here, as we already asserted this in setup.onStart
-                    const outdir = build.initialOptions.outdir!
-
-                    const publicPath = build.initialOptions.publicPath
 
                     const templatingResult = await renderTemplate(htmlFileConfiguration)
 
@@ -375,6 +408,8 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                         }
 
                         const linkTag = document.createElement('link')
+                        //@ts-expect-error Temp prop
+                        linkTag._int = true
                         linkTag.setAttribute('rel', 'icon')
 
                         let faviconPublicPath = `/${faviconName}`
@@ -385,7 +420,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                         document.head.appendChild(linkTag)
                     }
 
-                    await injectFiles(dom, collectedOutputFiles, outdir, publicPath, htmlFileConfiguration)
+                    await injectFiles(dom, collectedOutputFiles, outdir, publicPath, htmlFileConfiguration, foundAssets)
 
                     const out = posixJoin(outdir, htmlFileConfiguration.filename)
                     await fs.mkdir(path.dirname(out), {
@@ -395,7 +430,18 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                     const stat = await fs.stat(out)
                     if (logInfo) { console.log(`  ${out} - ${stat.size}`) }
                 }
-                if (logInfo) { console.log(`  HTML Plugin Done in ${Date.now() - startTime}ms`) }
+
+                //Write assets
+                for(const src in foundAssets) {
+                    const asset = foundAssets[src]
+                    try {
+                        await fs.copyFile(src, asset.dest)
+                    } catch(e) {
+                        throw new Error(`Could not include asset ${src} required by ${asset.htmlFile}`, {cause: e})
+                    }
+                }
+
+                if (logInfo) console.log(`  HTML Plugin Done in ${Date.now() - startTime}ms`)
             })
         }
     }
