@@ -1,6 +1,6 @@
 {
   "name": "@pecacheu/esbuild-plugin-html",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "main": "./lib/cjs/index.js",
   "repository": {
     "type": "git",

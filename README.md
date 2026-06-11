@@ -12,6 +12,14 @@ file.  `@pecacheu/esbuild-plugin-html` is inspired by
 Is any feature missing? 
 [Please create a ticket.](https://github.com/craftamap/esbuild-plugin-html/issues/new)
 
+# Fork details
+This is a fork of [@craftamap/esbuild-plugin-html](https://github.com/craftamap/esbuild-plugin-html) with a few helpful additions, namely:
+- fix: Dependency conflict & typo
+- feat: Make entryPoints default to esbuild entryPoints option
+- feat: Watch html files for changes
+- feat: Add appendHead/appendBody (for use in place of template when loading a file but adding extras)
+- feat: Automatically include assets from img, object, and link tags
+
 ## Requirements
 
 This plugin requires at least `esbuild` v0.12.26. The minimum node version
@@ -36,13 +44,13 @@ metafile contains information about all entryPoints and their output files.
 This way, this plugin can map input files to their output file (javascript as
 well as css).
 
-`craftamap/esbuild-plugin-html` uses the [jsdom](https://github.com/jsdom/jsdom)
+`esbuild-plugin-html` uses the [jsdom](https://github.com/jsdom/jsdom)
 under the hood to create a model of your HTML from the provided template. In
 this model, all discovered resources are injected. The plugin also uses [lodash
 templates](https://lodash.com/docs/4.17.15#template) to insert custom user
 data into the template.
 
-`@pecacheu/esbuild-plugin-html` requires to have some options set in your
+`esbuild-plugin-html` requires to have some options set in your
 esbuild script:
 
 - `outdir` must be set. The html files are generated within the `outdir`.
@@ -203,7 +211,7 @@ Commits should be messaged according to [Conventional Commits](https://www.conve
 ## Kudos: Other `*.html`-Plugins
 
 There exist some other `*.html`-plugins for esbuild. Those work differently
-than `@pecacheu/esbuild-plugin-html`, and might be a better fit for you:
+than `esbuild-plugin-html`, and might be a better fit for you:
 
 - [@esbuilder/html](https://www.npmjs.com/package/@esbuilder/html) -
   loader-based approach (use `*.html`-file as entry point, and start
