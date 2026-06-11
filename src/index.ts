@@ -86,6 +86,10 @@ function escapeRegExp(text: string): string {
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 }
 
+function appendHtmlStr(el: HTMLElement, html: string, pre = false) {
+    const doc = new JSDOM(html).window.document
+    el[pre ? 'prepend': 'append'](...doc.head.children, ...doc.body.children)
+}
 
 export const htmlPlugin = (configuration: Configuration = { files: [], }): esbuild.Plugin => {
     configuration.files = configuration.files.map((htmlFileConfiguration: HtmlFileConfiguration) => {
@@ -191,7 +195,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
     async function injectFiles(dom: JSDOM, assets: { path: string }[], outDir: string, publicPath: string | undefined, htmlFileConfiguration: HtmlFileConfiguration, foundAssets: AssetList) {
         const document = dom.window.document
-        if(htmlFileConfiguration.appendBody) document.body.innerHTML += htmlFileConfiguration.appendBody
+        if(htmlFileConfiguration.appendBody) appendHtmlStr(document.body, htmlFileConfiguration.appendBody)
         for (const script of htmlFileConfiguration?.extraScripts || []) {
             const scriptTag = document.createElement('script')
             if (typeof script === 'string') {
@@ -289,8 +293,8 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 if (logInfo) { console.log(`Warning: found file ${targetPath}, but it was neither .js nor .css`) }
             }
         }
-        if(htmlFileConfiguration.appendHead) document.head.innerHTML += htmlFileConfiguration.appendHead
-        if(htmlFileConfiguration.prependBody) document.body.innerHTML = htmlFileConfiguration.prependBody + document.body.innerHTML
+        if(htmlFileConfiguration.appendHead) appendHtmlStr(document.head, htmlFileConfiguration.appendHead)
+        if(htmlFileConfiguration.prependBody) appendHtmlStr(document.body, htmlFileConfiguration.prependBody, true)
 
         const htmlAtRoot = posixJoin(htmlFileConfiguration.filename).indexOf(path.sep) === -1
 
