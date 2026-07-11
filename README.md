@@ -14,11 +14,14 @@ Is any feature missing?
 
 # Fork details
 This is a fork of [@craftamap/esbuild-plugin-html](https://github.com/craftamap/esbuild-plugin-html) with a few helpful additions, namely:
-- fix: Dependency conflict & typo
 - feat: Make entryPoints default to esbuild entryPoints option
-- feat: Watch html files for changes
-- feat: Add appendHead/appendBody (for use in place of template when loading a file but adding extras)
+- feat: Automatically watch HTML files for changes
+- feat: Add appendHead/appendBody (for use in place of `template` when loading from a file but adding extras)
 - feat: Automatically include assets from img, object, and link tags
+- fix: Dependency conflict & typo
+
+> [!TIP]
+> For a build script that implements this plugin with sensible defaults and easy configuration for your web app or other esbuild project, have a look at [the RaiUtils package's Build module](https://www.npmjs.com/package/raiutils).
 
 ## Requirements
 
@@ -64,19 +67,20 @@ can, it may or may not work reliable. If you encounter any issues with it,
 
 ### Sample Configuration
 
-```javascript
+```js
 const esbuild = require('esbuild');
 const { htmlPlugin } = require('@pecacheu/esbuild-plugin-html');
 
 const options = {
     entryPoints: ['src/index.jsx'],
     bundle: true,
-    metafile: true, // needs to be set
+    metafile: true, // will be set for you
     outdir: 'dist/', // needs to be set
     plugins: [
         htmlPlugin({
             files: [
                 {
+                    // defaults to options.entryPoints
                     entryPoints: [
                         'src/index.jsx',
                     ],
@@ -138,47 +142,53 @@ const options = {
 esbuild.build(options).catch(() => process.exit(1))
 ```
 
-### Configuration
+### Configuration Options
 
-```typescript
+```ts
 interface Configuration {
     files: HtmlFileConfiguration[],
 }
 
 interface HtmlFileConfiguration {
-    filename: string,           // Output filename, e.g. index.html. This path is relative to the out dir
-    entryPoints: string[],      // Entry points to inject into the created html file, e.g. ['src/index.jsx']. 
-                                // Multiple entryPoints are possible.
-    title?: string,             // title to inject into the head, will not be set if not specified
-    htmlTemplate?: string,      // custom html document template string. If you omit a template, 
-                                // a default template will be used (see below)
-                                // can also be a relative path to an html file
+    /** Output filename, eg. index.html (relative to the output directory) */
+    filename: string,
+    /** Entry points to inject into the HTML, eg. ['src/index.jsx'] */
+    entryPoints?: string[],
+    /** Optional title to inject into head */
+    title?: string,
+    /** HTML template string. Defaults to a blank template, unless `htmlFile` is set */
+    htmlTemplate?: string,
+    /** Read the template from an HTML file on disk instead of `htmlTemplate` */
+    htmlFile?: string,
+    /** A map of custom variable definitions for lodash */
     define?: Record<string, string>,
-                                // Define custom values that can be accessed in the lodash template context
-    scriptLoading?: 'blocking' | 'defer' | 'module', 
-                                // Decide if the script tag will be inserted as blocking script tag, 
-                                // with `defer=""` (default) or with `type="module"`
-    favicon?: string,           // path to favicon.ico. If not specified, no favicon will be injected
+    /** How to load injected script tags. Defaults to defer */
+    scriptLoading?: 'blocking' | 'defer' | 'module',
+    /** Optional favicon to inject into head */
+    favicon?: string,
+    /** Whether to find related output CSS files and inject them into the HTML.
+     * Defaults to true */
     findRelatedCssFiles?: boolean,
-                                // Find related output *.css-files and inject them into the html. 
-                                // Defaults to true.
+    /** Whether to find output files that are related to the entry points
+     * @deprecated Use `findRelatedCssFiles` instead */
     findRelatedOutputFiles?: boolean,
-                                // Find output files following the same name schema of the output file 
-                                // like (*.css)-files and inject them into the html. This option is deprecated,
-                                // consider using findRelatedCssFiles.
-                                // Defaults to false.
-    inline?: boolean | {        // Inline all js and css entry points into the html file.
-        js?: boolean,           // Inline all js resources into the html file. 
-        css?: boolean,          // Inline all css resources into the html file.
-    } | ((filepath: string) => boolean), // Inline resources by custom function.
-                                // Not set by default - will not inline any resources.
-    extraScripts?: (string | {  // accepts an array of src strings or objects with src and attributes
-        src: string;            // src to use for the script
-        attrs?: { [key: string]: string } // attributes to append to the script, e.g. { type: 'module', async: true }
+    /** Inline content of JS files, CSS files, or both */
+    inline?: boolean | {
+        css?: boolean
+        js?: boolean
+    } | ((filepath: string) => boolean),
+    /** Extra script tags to include in the HTML file */
+    extraScripts?: (string | {
+        src: string,
+        attrs?: { [key: string]: string }
     })[],
-    hash?: boolean | string,    // Append a hash to all included scripts and CSS files for cache-busting. The
-                                // hash is based on the given string. If given a boolean, the hash is based on
-                                // the current time.
+    /** Extra HTML to append to the document head */
+    appendHead?: string,
+    /** Extra HTML to prepend to the document body */
+    prependBody?: string,
+    /** Extra HTML to append to the document body */
+    appendBody?: string,
+    hash?: boolean | string,
 }
 ```
 

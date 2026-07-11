@@ -10,43 +10,43 @@ export interface Configuration {
 }
 
 export interface HtmlFileConfiguration {
-    /** @param filename The name of the output HTML file (relative to the output directory) */
+    /** Output filename, eg. index.html (relative to the output directory) */
     filename: string,
-    /** @param entryPoints The entry points to include in the HTML file. */
+    /** Entry points to inject into the HTML, eg. ['src/index.jsx'] */
     entryPoints?: string[],
-    /** @param title The title of the HTML file. */
+    /** Optional title to inject into head */
     title?: string,
-    /** @param htmlTemplate A path to a custom HTML template to use. If not set, a default template will be used. */
+    /** HTML template string. Defaults to a blank template, unless `htmlFile` is set */
     htmlTemplate?: string,
-    /** @param htmlFile Read a template from an HTML file on disk. */
+    /** Read the template from an HTML file on disk instead of `htmlTemplate` */
     htmlFile?: string,
-    /** @param define A map of variables that will be available in the HTML file. */
+    /** A map of custom variable definitions for lodash */
     define?: Record<string, string>,
-    /** @param scriptLoading How to load the generated script tags: blocking, defer, or module. Defaults to defer. */
+    /** How to load injected script tags. Defaults to defer */
     scriptLoading?: 'blocking' | 'defer' | 'module',
-    /** @param favicon A path to a favicon to use. */
+    /** Optional favicon to inject into head */
     favicon?: string,
-    /** @param findRelatedCssFiles Whether to find CSS files that are related to the entry points. */
+    /** Whether to find related output CSS files and inject them into the HTML.
+     * Defaults to true */
     findRelatedCssFiles?: boolean,
-    /**
-     * @deprecated Use findRelatedCssFiles instead.
-     * @param findRelatedOutputFiles Whether to find output files that are related to the entry points. */
+    /** Whether to find output files that are related to the entry points
+     * @deprecated Use `findRelatedCssFiles` instead */
     findRelatedOutputFiles?: boolean,
-    /** @param inline Whether to inline the content of the js and css files. */
+    /** Inline content of JS files, CSS files, or both */
     inline?: boolean | {
         css?: boolean
         js?: boolean
     } | ((filepath: string) => boolean),
-    /** @param extraScripts Extra script tags to include in the HTML file. */
+    /** Extra script tags to include in the HTML file */
     extraScripts?: (string | {
         src: string,
         attrs?: { [key: string]: string }
     })[],
-    /** @param appendHead Extra tags to append to HTML head. */
+    /** Extra HTML to append to the document head */
     appendHead?: string,
-    /** @param prependBody Extra tags to prepend to HTML body. */
+    /** Extra HTML to prepend to the document body */
     prependBody?: string,
-    /** @param appendBody Extra tags to append to HTML body. */
+    /** Extra HTML to append to the document body */
     appendBody?: string,
     hash?: boolean | string,
 }
@@ -56,16 +56,15 @@ type AssetList = {[k: string]: {
     htmlFile: string
 }}
 
-const defaultHtmlTemplate = `
-<!DOCTYPE html>
+const defaultHtmlTemplate =
+`<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
   </head>
   <body>
   </body>
-</html>
-`
+</html>`
 
 const REGEXES = {
     DIR_REGEX: '(?<dir>\\S+\\/?)',
@@ -92,32 +91,20 @@ function appendHtmlStr(el: HTMLElement, html: string, pre = false) {
 }
 
 export const htmlPlugin = (configuration: Configuration = { files: [], }): esbuild.Plugin => {
-    configuration.files = configuration.files.map((htmlFileConfiguration: HtmlFileConfiguration) => {
-        return Object.assign({}, { findRelatedOutputFiles: false, findRelatedCssFiles: true }, htmlFileConfiguration) // Set default values
-    })
-
     let logInfo = false
 
     function collectEntrypoints(build: esbuild.PluginBuild, htmlFileConfiguration: HtmlFileConfiguration, metafile?: esbuild.Metafile) {
-        if (!metafile) {
-            throw new Error('metafile is missing!')
-        }
-        const initEntryPts = htmlFileConfiguration.entryPoints ?? build.initialOptions.entryPoints as string[]
-        const entryPoints = Object.entries(metafile?.outputs || {}).filter(([, value]) => {
-            if (!value.entryPoint) {
-                return false
-            }
-            return initEntryPts.includes(value.entryPoint)
-        }).map(outputData => {
-            // Flatten the output, instead of returning an array, let's return an object that contains the path of the output file as path
-            return { path: outputData[0], ...outputData[1] }
-        })
+        if (!metafile) throw new Error('metafile is missing!')
+        const initEntryPts = (htmlFileConfiguration.entryPoints ?? build.initialOptions.entryPoints as string[])
+            .map(ep => ep.replace(/\\/g, '/'))
+
+        // Flatten the output, instead of returning an array, let's return an object that contains the path of the output file as path
+        const entryPoints = Object.entries(metafile?.outputs || {}).filter(([, value]) => value.entryPoint
+            && initEntryPts.includes(value.entryPoint)).map(out => ({ path: out[0], ...out[1] }))
+
         if (entryPoints.length < initEntryPts.length) {
-            for (const htmlFileEntry of initEntryPts) {
-                if (!entryPoints.some(ep => ep.entryPoint === htmlFileEntry)) {
-                    console.log('⚠️ for "%s", entrypoint "%s" was requested, but not found.', htmlFileConfiguration.filename, htmlFileEntry)
-                }
-            }
+            for (const htmlFileEntry of initEntryPts) if (!entryPoints.some(ep => ep.entryPoint === htmlFileEntry))
+                console.log(`⚠️ for "${htmlFileConfiguration.filename}", entrypoint "${htmlFileEntry}" was requested, but not found.`)
         }
 
         return entryPoints
@@ -327,7 +314,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
         name: 'esbuild-html-plugin',
         setup(build) {
             if (build.initialOptions.metafile === false) {
-                throw new Error('metafile is explicitly disabled. @craftamap/esbuild-html-plugin needs this to be enabled.')
+                throw new Error('metafile is explicitly disabled. esbuild-html-plugin needs this to be enabled.')
             }
             // we need the metafile. If it's not set, we can set it to `true`
             build.initialOptions.metafile = true
@@ -374,10 +361,8 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                         }
                         const relatedOutputFiles = new Map()
                         relatedOutputFiles.set(entrypoint.path, entrypoint)
-                        if (htmlFileConfiguration.findRelatedCssFiles) {
-                            if (entrypoint?.cssBundle) {
-                                relatedOutputFiles.set(entrypoint.cssBundle, { path: entrypoint?.cssBundle })
-                            }
+                        if (htmlFileConfiguration.findRelatedCssFiles !== false && entrypoint.cssBundle) {
+                            relatedOutputFiles.set(entrypoint.cssBundle, { path: entrypoint.cssBundle })
                         }
                         if (htmlFileConfiguration.findRelatedOutputFiles) {
                             findNameRelatedOutputFiles(entrypoint, result.metafile, build.initialOptions.entryNames).forEach((item) => {
