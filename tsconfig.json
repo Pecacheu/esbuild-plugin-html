@@ -1,10 +1,10 @@
 {
-  "extends": "@tsconfig/node18/tsconfig.json",
   "compilerOptions": {
-    "preserveConstEnums": true,
+    "rootDir": "./src",
     "outDir": "lib/cjs",
     "declaration": true,
-    "module": "node16"
+    "module": "node20",
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts"]
