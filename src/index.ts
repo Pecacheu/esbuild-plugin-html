@@ -90,10 +90,10 @@ function appendHtmlStr(el: HTMLElement, html: string, pre = false) {
     el[pre ? 'prepend': 'append'](...doc.head.children, ...doc.body.children)
 }
 
-const pathToRegex = (p: string) => new RegExp(`^${RegExp.escape(path.resolve(p)).replace(/\\\\\\\*\\\*\\\\/g, '\\\\.+').replace(/\\\*/g, '[^\\\\]+')}$`)
+const pathToRegex = (p: string) => new RegExp(p === '*' ? '.' : `^${RegExp.escape(path.relative(process.cwd(), p)).replace(/\\\*\\\*\\[/\\]/g, '(?:.+[/\\\\])?').replace(/\\\*/g, '[^/\\\\]+')}$`)
 const pathsToRegex = (paths?: boolean | string[]) => Array.isArray(paths) ? paths.map(pathToRegex) : undefined
 
-type Outputs = (esbuild.Metafile['outputs'][0] & {dest: string, absSrc?: string})[]
+type Outputs = (esbuild.Metafile['outputs'][0] & {dest: string, relSrc?: string})[]
 
 export const htmlPlugin = (configuration: Configuration = { files: [], }): esbuild.Plugin => {
     let logInfo = false
@@ -101,15 +101,15 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
     function collectEntrypoints(build: esbuild.PluginBuild, config: HtmlFileConfiguration, outputs: Outputs, ignoreAssets?: RegExp[]) {
         const initEntryPts = (config.entryPoints ?? build.initialOptions.entryPoints as string[]).filter(ep => {
             if(ignoreAssets) {
-                ep = path.resolve(ep)
+                ep = path.relative(process.cwd(), ep)
                 if(ignoreAssets.find(r => r.test(ep!))) return
             }
             return true
         }).map(ep => ep.replace(/\\/g, '/')) as (string | false)[]
         const entryRegex = pathsToRegex(initEntryPts as string[])!
 
-        const entryPoints = outputs.filter(out => out.absSrc && entryRegex.find((r, i) => {
-            if(r.test(out.absSrc!)) {
+        const entryPoints = outputs.filter(out => out.relSrc && entryRegex.find((r, i) => {
+            if(r.test(out.relSrc!)) {
                 initEntryPts[i] = false
                 return true
             }
@@ -155,6 +155,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
             document.body.append(scriptTag)
         }
 
+        const cwd = process.cwd()
         const modeAll = typeof config.bundle === 'string' ? config.bundle : null
         const modeRegex = config.bundle && typeof config.bundle !== 'string' ? Object.entries(config.bundle)
             .map(([p, m]) => [pathToRegex(p), m]) as [RegExp, BundleMode][] : null
@@ -175,7 +176,7 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
             const ext = path.extname(out.dest)
             let mode: BundleMode | undefined
             if(ext === '.js' || ext === '.css') mode = modeRegex?.find(r => r[0].test((out as Outputs[0])
-                .absSrc || path.resolve(out.dest)))?.[1] ?? modeAll ?? (ext === '.js'? 'defer' : 'block')
+                .relSrc || path.relative(outDir, out.dest)))?.[1] ?? modeAll ?? (ext === '.js'? 'defer' : 'block')
 
             if(ext === '.js') {
                 const tag = document.createElement('script')
@@ -233,14 +234,14 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
 
             let name = path.basename(src)
             const dest = posixJoin(path.dirname(path.join(outDir, config.filename)), name)
-            src = path.resolve(src)
+            src = path.relative(cwd, src)
             if(ignoreAssets) {
                 let ignore = false
                 for(const r of ignoreAssets) if(r.test(src)) ignore = true
                 if(ignore) continue //Ignored
             }
 
-            const out = outputs.find(o => o.absSrc === src)
+            const out = outputs.find(o => o.relSrc === src)
             if(out) { //Already in build output
                 name = path.relative(outDir, out.dest)
             } else { //New asset
@@ -289,12 +290,13 @@ export const htmlPlugin = (configuration: Configuration = { files: [], }): esbui
                 const outdir = build.initialOptions.outdir!
                 const publicPath = build.initialOptions.publicPath
                 const foundAssets: AssetList = {}
+                const cwd = process.cwd()
 
                 //Flatten outputs into array w/ path and absolute entryPoint
                 if (!result.metafile?.outputs) throw new Error('Metafile outputs missing!')
                 const outputs: Outputs = Object.entries(result.metafile.outputs).map(([dest, out]) => {
                     const src = out.entryPoint || Object.keys(out.inputs)[0]
-                    return { dest, absSrc: src && path.resolve(src), ...out}
+                    return { dest, relSrc: src && path.relative(cwd, src), ...out}
                 })
 
                 for (const config of configuration.files) {
